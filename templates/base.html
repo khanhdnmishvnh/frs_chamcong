@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - Hệ thống chấm công</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #0A8E8E 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(180deg, #0A8E8E 0%, #14B8A6 100%);
+            color: white;
+            padding-top: 20px;
+            position: fixed;
+            height: 100%;
+            transition: all 0.3s ease;
+        }
+        .sidebar a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        .sidebar a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(5px);
+            color: #fff;
+        }
+        .sidebar a i {
+            margin-right: 10px;
+        }
+        .content {
+            margin-left: 250px;
+            padding: 20px;
+            width: calc(100% - 250px);
+            transition: all 0.3s ease;
+        }
+        .btn-gradient {
+            position: relative;
+            background: linear-gradient(90deg, #0A8E8E 0%, #14B8A6 100%);
+            transition: all 0.3s ease;
+            overflow: hidden;
+            z-index: 1;
+        }
+        .btn-gradient:hover {
+            background: linear-gradient(90deg, #14B8A6 0%, #0A8E8E 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(10, 142, 142, 0.3);
+            filter: brightness(1.1);
+        }
+        .btn-gradient::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            transition: width 0.6s ease, height 0.6s ease;
+        }
+        .btn-gradient:active::before {
+            width: 300px;
+            height: 300px;
+        }
+        .input-focus {
+            transition: all 0.3s ease;
+        }
+        .input-focus:focus {
+            border-color: #0A8E8E;
+            box-shadow: 0 0 0 3px rgba(10, 142, 142, 0.2);
+        }
+        /* Popup xác nhận đăng xuất */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        .modal-content p {
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 16px;
+            color: #333;
+        }
+        .modal-content .btn {
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .btn-confirm {
+            background: linear-gradient(90deg, #0A8E8E 0%, #14B8A6 100%);
+            color: white;
+        }
+        .btn-confirm:hover {
+            background: linear-gradient(90deg, #14B8A6 0%, #0A8E8E 100%);
+        }
+        .btn-cancel {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+        .btn-cancel:hover {
+            background-color: #d1d5db;
+        }
+        /* Popup ghi chú khi hover */
+        .note-tooltip {
+            display: none;
+            position: absolute;
+            background-color: #fff;
+            border: 1px solid #0A8E8E;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            font-size: 12px;
+            white-space: nowrap;
+            color: #333;
+        }
+        .note-label:hover .note-tooltip {
+            display: block;
+        }
+        /* Popup thông tin ngày công */
+        .attendance-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .attendance-modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        .attendance-modal-content .close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+        }
+        .attendance-modal-content .close:hover {
+            color: #0A8E8E;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 0;
+                padding-top: 0;
+            }
+            .content {
+                margin-left: 0;
+                width: 100%;
+            }
+            .sidebar.active {
+                width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 mx-auto bg-white rounded-full flex items-center justify-center text-teal-600 font-bold text-2xl shadow-lg mb-2">
+                <img src="{{ url_for('static', filename='images/bg.png') }}" alt="Background Image" class="w-full h-full object-cover rounded-full">
+            </div>
+            <h2 class="text-xl font-bold">Hệ thống nhận diện khuôn mặt</h2>
+        </div>
+        <nav>
+            <!-- <a href="{{ url_for('login') }}" {% if request.endpoint == 'login' %}class="bg-teal-700"{% endif %}>
+                <i class="fas fa-sign-in-alt"></i> Đăng nhập
+            </a> -->
+            {% if session.logged_in %}
+                <a href="{{ url_for('face_recognition') }}" {% if request.endpoint == 'face_recognition' %}class="bg-teal-700"{% endif %}>
+                    <i class="fas fa-camera"></i> Nhận diện khuôn mặt
+                </a>
+                <a href="{{ url_for('attendance_history') }}" {% if request.endpoint == 'attendance_history' %}class="bg-teal-700"{% endif %}>
+                    <i class="fas fa-calendar-alt"></i> Lịch sử chấm công
+                </a>
+                <a href="{{ url_for('manual_checkin') }}" {% if request.endpoint == 'manual_checkin' %}class="bg-teal-700"{% endif %}>
+                    <i class="fas fa-user-edit"></i> Chấm công thủ công
+                </a>
+                <a href="{{ url_for('report') }}" {% if request.endpoint == 'report' %}class="bg-teal-700"{% endif %}>
+                    <i class="fas fa-chart-bar"></i> Báo cáo
+                </a>
+                <a href="#" id="logout-link" class="text-red-300 hover:text-red-100">
+                    <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                </a>
+            {% endif %}
+        </nav>
+    </div>
+
+    <!-- Popup xác nhận đăng xuất -->
+    <div id="logoutModal" class="modal">
+        <div class="modal-content">
+            <p>Bạn có chắc chắn muốn đăng xuất không?</p>
+            <div class="flex justify-center space-x-4">
+                <a href="{{ url_for('logout') }}" class="btn btn-confirm">Đồng ý</a>
+                <button id="cancelLogout" class="btn btn-cancel">Hủy</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="bg-{{ 'green' if category == 'success' else 'red' }}-100 border border-{{ 'green' if category == 'success' else 'red' }}-400 text-{{ 'green' if category == 'success' else 'red' }}-700 px-4 py-3 rounded relative mb-4" role="alert">
+                        <span class="block sm:inline">{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <script>
+        // Toggle sidebar trên mobile
+        const sidebar = document.getElementById('sidebar');
+        const hamburger = document.createElement('div');
+        hamburger.innerHTML = '<i class="fas fa-bars text-white text-2xl p-4 cursor-pointer"></i>';
+        hamburger.className = 'fixed top-4 left-4 z-50 md:hidden';
+        document.body.prepend(hamburger);
+
+        hamburger.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!sidebar.contains(e.target) && !hamburger.contains(e.target) && window.innerWidth <= 768) {
+                sidebar.classList.remove('active');
+            }
+        });
+
+        // Xử lý popup xác nhận đăng xuất
+        const logoutLink = document.getElementById('logout-link');
+        const logoutModal = document.getElementById('logoutModal');
+        const cancelLogout = document.getElementById('cancelLogout');
+
+        if (logoutLink) {
+            logoutLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                logoutModal.style.display = 'block';
+            });
+        }
+
+        if (cancelLogout) {
+            cancelLogout.addEventListener('click', () => {
+                logoutModal.style.display = 'none';
+            });
+        }
+
+        window.addEventListener('click', (e) => {
+            if (e.target === logoutModal) {
+                logoutModal.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

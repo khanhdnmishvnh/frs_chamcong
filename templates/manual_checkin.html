@@ -1,0 +1,92 @@
+{% extends "base.html" %} {% block content %}
+<div class="card p-6 bg-white rounded-xl shadow-lg">
+  <h2 class="text-center text-2xl font-bold text-gray-800 mb-6">
+    Chấm công thủ công
+  </h2>
+  <form
+    method="POST"
+    class="grid grid-cols-1 md:grid-cols-2 gap-4"
+    enctype="multipart/form-data"
+  >
+    <div>
+      <label for="employee_id" class="block text-gray-700 font-medium mb-2"
+        >Nhân viên</label
+      >
+      <select
+        id="employee_id"
+        name="employee_id"
+        class="form-control w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        required
+      >
+        {% for employee in employees %}
+        <option value="{{ employee[0] }}">{{ employee[1] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="checkin_time" class="block text-gray-700 font-medium mb-2"
+        >Thời gian vào</label
+      >
+      <input
+        type="datetime-local"
+        id="checkin_time"
+        name="checkin_time"
+        class="form-control w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+    <div>
+      <label for="checkout_time" class="block text-gray-700 font-medium mb-2"
+        >Thời gian ra</label
+      >
+      <input
+        type="datetime-local"
+        id="checkout_time"
+        name="checkout_time"
+        class="form-control w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+    <div>
+      <label for="date" class="block text-gray-700 font-medium mb-2"
+        >Ngày</label
+      >
+      <input
+        type="date"
+        id="date"
+        name="date"
+        class="form-control w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        required
+      />
+    </div>
+    <div>
+      <label for="checkin_image" class="block text-gray-700 font-medium mb-2"
+        >Ảnh vào</label
+      >
+      <input
+        type="file"
+        id="checkin_image"
+        name="checkin_image"
+        class="form-control w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+    <div>
+      <label for="checkout_image" class="block text-gray-700 font-medium mb-2"
+        >Ảnh ra</label
+      >
+      <input
+        type="file"
+        id="checkout_image"
+        name="checkout_image"
+        class="form-control w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+    <div class="md:col-span-2 text-center mt-4">
+      <button
+        type="submit"
+        class="btn btn-primary py-3 px-6 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition duration-300"
+      >
+        Chấm công
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

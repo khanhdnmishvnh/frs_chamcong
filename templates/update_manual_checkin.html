@@ -1,0 +1,86 @@
+{% extends "base.html" %} {% block content %}
+<div class="card p-6 bg-white rounded-xl shadow-lg">
+  <h2 class="text-center text-2xl font-bold text-gray-800 mb-6">
+    Cập nhật chấm công thủ công
+  </h2>
+  <form
+    method="POST"
+    class="grid grid-cols-1 md:grid-cols-2 gap-4"
+    enctype="multipart/form-data"
+  >
+    <input type="hidden" name="attendance_id" value="{{ record[0] }}" />
+    <div>
+      <label for="checkin_time" class="block text-gray-700 font-medium mb-2"
+        >Thời gian vào</label
+      >
+      <input
+        type="datetime-local"
+        id="checkin_time"
+        name="checkin_time"
+        value="{{ record[2] or '' }}"
+        class="form-control w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+    <div>
+      <label for="checkout_time" class="block text-gray-700 font-medium mb-2"
+        >Thời gian ra</label
+      >
+      <input
+        type="datetime-local"
+        id="checkout_time"
+        name="checkout_time"
+        value="{{ record[3] or '' }}"
+        class="form-control w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+    <div>
+      <label for="date" class="block text-gray-700 font-medium mb-2"
+        >Ngày</label
+      >
+      <input
+        type="date"
+        id="date"
+        name="date"
+        value="{{ record[4] }}"
+        class="form-control w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        required
+      />
+    </div>
+    <div>
+      <label for="checkin_image" class="block text-gray-700 font-medium mb-2"
+        >Ảnh vào</label
+      >
+      <input
+        type="file"
+        id="checkin_image"
+        name="checkin_image"
+        class="form-control w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+    <div>
+      <label for="checkout_image" class="block text-gray-700 font-medium mb-2"
+        >Ảnh ra</label
+      >
+      <input
+        type="file"
+        id="checkout_image"
+        name="checkout_image"
+        class="form-control w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+    <div class="md:col-span-2 text-center mt-4">
+      <button
+        type="submit"
+        class="btn btn-primary py-3 px-6 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition duration-300"
+      >
+        Cập nhật
+      </button>
+      <a
+        href="{{ url_for('attendance_history') }}"
+        class="btn btn-secondary py-3 px-6 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition duration-300 ml-2"
+        >Hủy</a
+      >
+    </div>
+  </form>
+</div>
+{% endblock %}

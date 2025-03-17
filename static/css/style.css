@@ -1,0 +1,50 @@
+/* Gradient và shadow cho card */
+.card {
+  background: linear-gradient(135deg, #ffffff, #f3f4f6);
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Căn chỉnh và padding */
+.table th,
+.table td {
+  vertical-align: middle;
+}
+
+/* Định dạng badge */
+.badge i {
+  margin-right: 5px;
+}
+
+/* Button gradient */
+.btn-primary {
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(45deg, #1d4ed8, #6b46c1);
+  transform: scale(1.05);
+}
+
+/* Input focus */
+.form-control:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+}
+
+/* Responsive table */
+@media (max-width: 640px) {
+  .table {
+    display: block;
+    overflow-x: auto;
+  }
+}

@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Lịch sử chấm công{% endblock %}
+
+{% block content %}
+<div class="card p-6 bg-white rounded-xl shadow-lg" style="margin-left: 0;">
+    <!-- Bộ lọc -->
+    <div class="flex justify-between items-center mb-6">
+        <div class="flex space-x-4">
+            <div class="relative">
+                <select id="month_filter" name="month_filter" class="w-32 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none input-focus">
+                    {% for month in range(1, 13) %}
+                        <option value="{{ month }}" {% if month_filter == month|string %}selected{% endif %}>Tháng {{ month }}</option>
+                    {% endfor %}
+                </select>
+                <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                    <i class="fas fa-chevron-down"></i>
+                </span>
+            </div>
+            <div class="relative">
+                <select id="year_filter" name="year_filter" class="w-32 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none input-focus">
+                    {% for year in range(2020, 2031) %}
+                        <option value="{{ year }}" {% if year_filter == year|string %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+                <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                    <i class="fas fa-chevron-down"></i>
+                </span>
+            </div>
+            <button id="refresh_btn" class="btn-gradient text-white py-2 px-4 rounded-lg">
+                <i class="fas fa-sync-alt mr-2"></i>Tải lại
+            </button>
+        </div>
+        <a href="{{ url_for('manual_checkin') }}" class="btn-gradient text-white py-2 px-4 rounded-lg">
+            <i class="fas fa-user-edit mr-2"></i>Chấm công thủ công
+        </a>
+    </div>
+
+    <!-- Tiêu đề -->
+    <h2 id="calendar_title" class="text-2xl font-bold text-gray-800 text-center mb-4"></h2>
+
+    <!-- Chú thích -->
+    <div class="flex flex-wrap space-x-4 mb-4 text-sm">
+        <div class="flex items-center">
+            <span class="w-4 h-4 bg-green-100 mr-2"></span> Có đi làm
+        </div>
+        <div class="flex items-center">
+            <span class="w-4 h-4 bg-red-100 mr-2"></span> Không chấm công
+        </div>
+        <div class="flex items-center">
+            <span class="w-4 h-4 bg-gray-200 mr-2"></span> Ngày nghỉ
+            <span class="note-label ml-2 text-xs text-teal-600 cursor-pointer" style="position: relative;">
+                <i class="fas fa-question-circle mr-1"></i>Xem thêm ghi chú
+                <div class="note-tooltip" style="top: -30px; left: 0;">
+                    <p><strong>Ký hiệu:</strong></p>
+                    <p>P: Nghỉ phép</p>
+                    <p>Q1: Quên chấm công lúc vào</p>
+                    <p>Q2: Quên chấm công lúc ra</p>
+                    <p>M: Đi làm muộn</p>
+                    <p>S: Ra về sớm</p>
+                </div>
+            </span>
+        </div>
+    </div>
+
+    <!-- Bảng lịch sử chấm công -->
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-center">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="p-3 border">STT</th>
+                    <th class="p-3 border">Tên nhân viên</th>
+                    <th class="p-3 border">Số ngày phép còn lại</th>
+                    <th class="p-3 border">Số ca có lương</th>
+                    <!-- Các cột ngày sẽ được thêm bằng JavaScript -->
+                </tr>
+            </thead>
+            <tbody id="calendarTableBody">
+                <!-- Dữ liệu sẽ được điền bằng JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Phân trang -->
+    <div class="flex justify-between items-center mt-4">
+        <div>
+            <button class="btn-gradient text-white py-2 px-4 rounded-lg mr-2">Sắp xếp theo</button>
+            <span class="text-gray-600">20/trang</span>
+        </div>
+        <div class="text-gray-600">
+            Tổng số bản ghi: <span id="total_records">0</span>
+        </div>
+    </div>
+
+    <!-- Popup thông tin ngày công -->
+    <div id="attendanceModal" class="attendance-modal">
+        <div class="attendance-modal-content">
+            <span class="close">×</span>
+            <h3 class="text-lg font-bold mb-4 text-gray-800">Thông tin ngày công</h3>
+            <div id="attendanceDetails"></div>
+            <!-- Form chấm công thủ công trong popup -->
+            <div id="manualCheckinForm" style="display: none;">
+                <form id="manualCheckinPopupForm">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Thời gian vào (giờ:phút)</label>
+                        <input type="time" id="checkin_time_popup" name="checkin_time" class="w-full p-2 border border-gray-300 rounded-lg input-focus">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Thời gian ra (giờ:phút)</label>
+                        <input type="time" id="checkout_time_popup" name="checkout_time" class="w-full p-2 border border-gray-300 rounded-lg input-focus">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Ngày</label>
+                        <input type="date" id="date_popup" name="date" class="w-full p-2 border border-gray-300 rounded-lg input-focus" readonly>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Ảnh minh chứng</label>
+                        <input type="file" id="evidence_image_popup" name="evidence_image" accept="image/*" class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Tính chất</label>
+                        <div>
+                            <label class="inline-flex items-center mr-4">
+                                <input type="radio" name="status" value="OnTime" class="form-radio" required> Có đi làm
+                            </label>
+                            <label class="inline-flex items-center mr-4">
+                                <input type="radio" name="status" value="Q1" class="form-radio"> Quên không chấm công lúc đến
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="status" value="Q2" class="form-radio"> Quên không chấm công lúc về
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-gradient text-white py-2 px-4 rounded-lg">Xác nhận</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentEmployeeId = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        function fetchAttendanceCalendar() {
+            const monthFilter = document.getElementById('month_filter').value;
+            const yearFilter = document.getElementById('year_filter').value;
+
+            fetch(`/api/attendance_calendar?month_filter=${monthFilter}&year_filter=${yearFilter}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const tbody = document.getElementById('calendarTableBody');
+                        const thead = document.querySelector('table thead tr');
+                        tbody.innerHTML = '';
+
+                        // Cập nhật tiêu đề
+                        const startDate = new Date(data.start_date);
+                        const endDate = new Date(data.end_date);
+                        document.getElementById('calendar_title').textContent = 
+                            `Lịch làm việc từ ngày ${startDate.toLocaleDateString('vi-VN')} đến ngày ${endDate.toLocaleDateString('vi-VN')}`;
+
+                        // Cập nhật cột ngày trong header
+                        while (thead.children.length > 4) {
+                            thead.removeChild(thead.lastChild);
+                        }
+                        for (let day = 1; day <= data.num_days; day++) {
+                            const dateStr = `${yearFilter}-${monthFilter.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                            const date = new Date(dateStr);
+                            const dayOfWeek = date.getDay();
+                            const dayLabel = `${day.toString().padStart(2, '0')}/${monthFilter.toString().padStart(2, '0')}/${yearFilter}<br>(${dayOfWeek === 0 ? 'Chủ nhật' : 'Thứ ' + (dayOfWeek + 1)})`;
+                            const th = document.createElement('th');
+                            th.className = 'p-3 border';
+                            th.innerHTML = dayLabel;
+                            thead.appendChild(th);
+                        }
+
+                        data.calendar_data.forEach(record => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td class="p-3 border">${record.stt}</td>
+                                <td class="p-3 border text-left">${record.full_name}</td>
+                                <td class="p-3 border">${record.remaining_leave_days}</td>
+                                <td class="p-3 border">${record.paid_days}</td>
+                            `;
+
+                            record.days.forEach(day => {
+                                const td = document.createElement('td');
+                                td.className = 'p-3 border';
+                                td.dataset.employeeId = record.employee_id;
+                                td.dataset.date = day.date;
+                                const dateObj = new Date(day.date);
+                                const dayOfWeek = dateObj.getDay();
+
+                                if (dayOfWeek === 6 || dayOfWeek === 0) { // Thứ 7 hoặc Chủ nhật
+                                    td.className += ' bg-gray-200';
+                                    td.textContent = '';
+                                    td.style.pointerEvents = 'none'; // Vô hiệu hóa click
+                                } else if (!day.checkin_time && !day.checkout_time) { // Không chấm công cả vào và ra
+                                    td.className += ' bg-red-100 cursor-pointer';
+                                    td.textContent = 'P';
+                                } else if (!day.checkin_time && day.checkout_time) { // Quên chấm công lúc vào
+                                    td.className += ' bg-red-100 cursor-pointer';
+                                    td.textContent = 'Q1';
+                                } else if (day.checkin_time && !day.checkout_time) { // Quên chấm công lúc ra
+                                    td.className += ' bg-red-100 cursor-pointer';
+                                    td.textContent = 'Q2';
+                                } else if (day.status === 'OnTime') { // Đúng giờ
+                                    td.className += ' bg-green-100 cursor-pointer';
+                                    td.innerHTML = '<i class="fas fa-dollar-sign text-green-600"></i>';
+                                    // Xử lý ký tự nếu muộn hoặc về sớm
+                                    const checkinDiff = day.checkin_time ? (new Date(day.checkin_time) - new Date(day.date + ' 08:00:00')) / 60000 : 0;
+                                    const checkoutDiff = day.checkout_time ? (new Date(day.date + ' 17:00:00') - new Date(day.checkout_time)) / 60000 : 0;
+                                    if (checkinDiff > 0) td.innerHTML = 'M';
+                                    else if (checkoutDiff > 0) td.innerHTML = 'S';
+                                } else {
+                                    td.className += ' bg-green-100 cursor-pointer';
+                                    td.textContent = day.status || '';
+                                }
+                                if (td.className.includes('bg-red-100')) {
+                                    td.addEventListener('click', showAttendanceDetailsForManual);
+                                } else if (td.className.includes('bg-green-100')) {
+                                    td.addEventListener('click', showAttendanceDetailsForView);
+                                }
+                                row.appendChild(td);
+                            });
+
+                            tbody.appendChild(row);
+                        });
+
+                        document.getElementById('total_records').textContent = data.calendar_data.length;
+                    } else {
+                        console.error('Error fetching data:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        // Hiển thị popup thông tin chỉ để xem (ô xanh)
+        function showAttendanceDetailsForView(e) {
+            const td = e.target;
+            currentEmployeeId = td.dataset.employeeId;
+            const date = td.dataset.date;
+
+            fetch(`/api/attendance_detail?employee_id=${currentEmployeeId}&date=${date}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        let statusText = '';
+                        switch (data.status) {
+                            case 'P':
+                                statusText = 'Nghỉ phép';
+                                break;
+                            case 'Q1':
+                                statusText = 'Quên không chấm công lúc vào';
+                                break;
+                            case 'Q2':
+                                statusText = 'Quên không chấm công lúc ra';
+                                break;
+                            case 'M':
+                                statusText = 'Đi làm muộn';
+                                break;
+                            case 'S':
+                                statusText = 'Ra về sớm';
+                                break;
+                            case 'OnTime':
+                                statusText = 'Có đi làm';
+                                break;
+                            default:
+                                statusText = data.status;
+                        }
+
+                        const detailsDiv = document.getElementById('attendanceDetails');
+                        detailsDiv.innerHTML = `
+                            <p><strong>Nhân viên:</strong> ${data.full_name}</p>
+                            <p><strong>Ngày:</strong> ${data.date}</p>
+                            <p><strong>Trạng thái:</strong> ${statusText}</p>
+                            <p><strong>Thời gian vào:</strong> ${data.checkin_time || 'N/A'}</p>
+                            <p><strong>Thời gian ra:</strong> ${data.checkout_time || 'N/A'}</p>
+                            <p><strong>Ảnh vào:</strong> ${data.checkin_image ? `<img src="${data.checkin_image}" alt="Ảnh vào" class="w-32 h-32 mt-2">` : 'N/A'}</p>
+                            <p><strong>Ảnh ra:</strong> ${data.checkout_image ? `<img src="${data.checkout_image}" alt="Ảnh ra" class="w-32 h-32 mt-2">` : 'N/A'}</p>
+                        `;
+                        document.getElementById('manualCheckinForm').style.display = 'none'; // Ẩn form
+                        document.getElementById('attendanceModal').style.display = 'block';
+                    }
+                });
+        }
+
+        // Hiển thị popup với form chấm công thủ công (ô hồng)
+        function showAttendanceDetailsForManual(e) {
+            const td = e.target;
+            currentEmployeeId = td.dataset.employeeId;
+            const date = td.dataset.date;
+
+            fetch(`/api/attendance_detail?employee_id=${currentEmployeeId}&date=${date}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        let statusText = '';
+                        switch (data.status) {
+                            case 'P':
+                                statusText = 'Nghỉ phép';
+                                break;
+                            case 'Q1':
+                                statusText = 'Quên không chấm công lúc vào';
+                                break;
+                            case 'Q2':
+                                statusText = 'Quên không chấm công lúc ra';
+                                break;
+                            default:
+                                statusText = 'Không chấm công';
+                        }
+
+                        const detailsDiv = document.getElementById('attendanceDetails');
+                        detailsDiv.innerHTML = `
+                            <p><strong>Nhân viên:</strong> ${data.full_name}</p>
+                            <p><strong>Ngày:</strong> ${data.date}</p>
+                            <p><strong>Trạng thái:</strong> ${statusText}</p>
+                            <p><strong>Thời gian vào:</strong> ${data.checkin_time || 'N/A'}</p>
+                            <p><strong>Thời gian ra:</strong> ${data.checkout_time || 'N/A'}</p>
+                            <p><strong>Ảnh vào:</strong> ${data.checkin_image ? `<img src="${data.checkin_image}" alt="Ảnh vào" class="w-32 h-32 mt-2">` : 'N/A'}</p>
+                            <p><strong>Ảnh ra:</strong> ${data.checkout_image ? `<img src="${data.checkout_image}" alt="Ảnh ra" class="w-32 h-32 mt-2">` : 'N/A'}</p>
+                        `;
+                        document.getElementById('date_popup').value = date;
+                        const checkinInput = document.getElementById('checkin_time_popup');
+                        const checkoutInput = document.getElementById('checkout_time_popup');
+                        const statusRadios = document.querySelectorAll('input[name="status"]');
+
+                        // Điền dữ liệu mặc định và disable trường phù hợp
+                        if (!data.checkin_time && !data.checkout_time) { // P: Nghỉ phép
+                            checkinInput.value = '';
+                            checkoutInput.value = '';
+                            checkinInput.disabled = false;
+                            checkoutInput.disabled = false;
+                            statusRadios[0].checked = true; // Có đi làm
+                        } else if (!data.checkin_time && data.checkout_time) { // Q1: Quên chấm công lúc vào
+                            checkinInput.value = '';
+                            checkoutInput.value = data.checkout_time.split(' ')[1].substring(0, 5);
+                            checkinInput.disabled = false;
+                            checkoutInput.disabled = true;
+                            statusRadios[1].checked = true; // Quên không chấm công lúc đến
+                        } else if (data.checkin_time && !data.checkout_time) { // Q2: Quên chấm công lúc ra
+                            checkinInput.value = data.checkin_time.split(' ')[1].substring(0, 5);
+                            checkoutInput.value = '';
+                            checkinInput.disabled = true;
+                            checkoutInput.disabled = false;
+                            statusRadios[2].checked = true; // Quên không chấm công lúc về
+                        }
+
+                        document.getElementById('manualCheckinForm').style.display = 'block';
+                        document.getElementById('attendanceModal').style.display = 'block';
+                    }
+                });
+        }
+
+        // Xử lý form chấm công thủ công trong popup
+        document.getElementById('manualCheckinPopupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!currentEmployeeId) {
+                alert('Không tìm thấy ID nhân viên. Vui lòng thử lại.');
+                return;
+            }
+            const date = document.getElementById('date_popup').value;
+            const checkinTime = document.getElementById('checkin_time_popup').value;
+            const checkoutTime = document.getElementById('checkout_time_popup').value;
+            const evidenceImage = document.getElementById('evidence_image_popup').files[0];
+            const status = document.querySelector('input[name="status"]:checked').value;
+
+            // Kiểm tra logic thời gian dựa trên "Tính chất"
+            if (status === 'OnTime' && (!checkinTime || !checkoutTime)) {
+                alert('Khi chọn "Có đi làm", bạn phải nhập cả thời gian vào và thời gian ra.');
+                return;
+            }
+            if (status === 'Q1' && !checkinTime) {
+                alert('Khi chọn "Quên không chấm công lúc đến", bạn phải nhập thời gian vào.');
+                return;
+            }
+            if (status === 'Q2' && !checkoutTime) {
+                alert('Khi chọn "Quên không chấm công lúc về", bạn phải nhập thời gian ra.');
+                return;
+            }
+
+            const fullCheckinTime = checkinTime ? `${date}T${checkinTime}:00` : null;
+            const fullCheckoutTime = checkoutTime ? `${date}T${checkoutTime}:00` : null;
+
+            const formData = new FormData();
+            formData.append('employee_id', currentEmployeeId);
+            formData.append('date', date);
+            formData.append('checkin_time', fullCheckinTime || '');
+            formData.append('checkout_time', fullCheckoutTime || '');
+            if (evidenceImage) formData.append('evidence_image', evidenceImage);
+            formData.append('status', status);
+
+            fetch('/api/manual_checkin_popup', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Cập nhật chấm công thành công!');
+                    document.getElementById('attendanceModal').style.display = 'none';
+                    fetchAttendanceCalendar(); // Làm mới bảng
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Đã xảy ra lỗi khi gửi dữ liệu. Vui lòng thử lại.');
+            });
+        });
+
+        // Đóng popup
+        document.querySelector('.close').addEventListener('click', () => {
+            document.getElementById('attendanceModal').style.display = 'none';
+            document.getElementById('manualCheckinForm').style.display = 'none';
+            currentEmployeeId = null;
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('attendanceModal')) {
+                document.getElementById('attendanceModal').style.display = 'none';
+                document.getElementById('manualCheckinForm').style.display = 'none';
+                currentEmployeeId = null;
+            }
+        });
+
+        // Lắng nghe sự kiện thay đổi trên bộ lọc
+        document.getElementById('month_filter').addEventListener('change', fetchAttendanceCalendar);
+        document.getElementById('year_filter').addEventListener('change', fetchAttendanceCalendar);
+        document.getElementById('refresh_btn').addEventListener('click', fetchAttendanceCalendar);
+
+        // Lấy dữ liệu ban đầu khi trang tải
+        fetchAttendanceCalendar();
+    });
+</script>
+{% endblock %}

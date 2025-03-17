@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Báo cáo chấm công</h1>
+
+    <!-- Form lọc dữ liệu -->
+    <div class="card p-6 bg-white rounded-xl shadow-lg mb-6">
+        <form method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label for="start_date" class="block text-sm font-medium text-gray-700">Từ ngày</label>
+                <input type="date" id="start_date" name="start_date" value="{{ start_date }}" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+            </div>
+            <div>
+                <label for="end_date" class="block text-sm font-medium text-gray-700">Đến ngày</label>
+                <input type="date" id="end_date" name="end_date" value="{{ end_date }}" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+            </div>
+            <div>
+                <label for="department_filter" class="block text-sm font-medium text-gray-700">Phòng ban</label>
+                <select id="department_filter" name="department_filter" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    <option value="all" {% if department_filter == 'all' %}selected{% endif %}>Tất cả</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept[0] }}" {% if department_filter == dept[0]|string %}selected{% endif %}>{{ dept[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="employee_filter" class="block text-sm font-medium text-gray-700">Nhân viên</label>
+                <select id="employee_filter" name="employee_filter" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    <option value="all" {% if employee_filter == 'all' %}selected{% endif %}>Tất cả</option>
+                    {% for emp in employees %}
+                        <option value="{{ emp[0] }}" {% if employee_filter == emp[0]|string %}selected{% endif %}>{{ emp[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-4 flex justify-end">
+                <button type="submit" class="py-2 px-4 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition duration-300">
+                    <i class="fas fa-filter"></i> Lọc dữ liệu
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% if has_data %}
+        <!-- Thống kê tổng quan -->
+        <div class="card p-6 bg-white rounded-xl shadow-lg mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Thống kê tổng quan</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="p-4 bg-gray-50 rounded-lg shadow-sm">
+                    <p class="text-sm text-gray-500">Tổng số nhân viên</p>
+                    <p class="text-2xl font-bold text-gray-800">{{ total_employees }}</p>
+                </div>
+                <div class="p-4 bg-green-50 rounded-lg shadow-sm">
+                    <p class="text-sm text-gray-500">Tỷ lệ đúng giờ</p>
+                    <p class="text-2xl font-bold text-green-600">{{ on_time_rate|round(2) }}%</p>
+                </div>
+                <div class="p-4 bg-red-50 rounded-lg shadow-sm">
+                    <p class="text-sm text-gray-500">Tỷ lệ đi muộn</p>
+                    <p class="text-2xl font-bold text-red-600">{{ late_rate|round(2) }}%</p>
+                </div>
+                <div class="p-4 bg-gray-50 rounded-lg shadow-sm">
+                    <p class="text-sm text-gray-500">Tỷ lệ vắng mặt</p>
+                    <p class="text-2xl font-bold text-gray-600">{{ absent_rate|round(2) }}%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thống kê tổng hợp theo nhân viên -->
+        <div class="card p-6 bg-white rounded-xl shadow-lg mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Thống kê tổng hợp theo nhân viên</h2>
+            <div class="overflow-x-auto">
+                <table class="table table-bordered w-full text-center">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="p-3">Nhân viên</th>
+                            <th class="p-3">Tổng ngày làm</th>
+                            <th class="p-3">Tổng giờ làm</th>
+                            <th class="p-3">Đúng giờ</th>
+                            <th class="p-3">Đi muộn</th>
+                            <th class="p-3">Về sớm</th>
+                            <th class="p-3">Vắng mặt</th>
+                            <th class="p-3">Chấm công thủ công</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in employee_stats %}
+                            <tr class="hover:bg-gray-50 transition duration-200">
+                                <td class="p-3">{{ emp[1] }}</td>
+                                <td class="p-3">{{ emp[2] }}</td>
+                                <td class="p-3">{{ emp[3]|round(2) }}</td>
+                                <td class="p-3">{{ emp[4] or 0 }}</td>
+                                <td class="p-3">{{ emp[5] or 0 }}</td>
+                                <td class="p-3">{{ emp[6] or 0 }}</td>
+                                <td class="p-3">{{ emp[7] or 0 }}</td>
+                                <td class="p-3">{{ emp[8] or 0 }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Thống kê chi tiết theo ngày -->
+        <div class="card p-6 bg-white rounded-xl shadow-lg mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Thống kê chi tiết theo ngày</h2>
+            <div class="overflow-x-auto">
+                <table class="table table-bordered w-full text-center">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="p-3">Nhân viên</th>
+                            <th class="p-3">Ngày</th>
+                            <th class="p-3">Thời gian vào</th>
+                            <th class="p-3">Thời gian ra</th>
+                            <th class="p-3">Trạng thái</th>
+                            <th class="p-3">Cập nhật bởi</th>
+                            <th class="p-3">Thời gian cập nhật</th>
+                            <th class="p-3">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in detailed_records %}
+                            <tr class="hover:bg-gray-50 transition duration-200">
+                                <td class="p-3">{{ record[1] }}</td>
+                                <td class="p-3">{{ record[4] }}</td>
+                                <td class="p-3">{{ record[2] or 'N/A' }}</td>
+                                <td class="p-3">{{ record[3] or 'N/A' }}</td>
+                                <td class="p-3">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                                        {% if record[5] == 'OnTime' %}bg-green-100 text-green-800 bg-opacity-70
+                                        {% elif record[5] == 'Late' %}bg-red-100 text-red-800 bg-opacity-70
+                                        {% elif record[5] == 'EarlyLeave' %}bg-yellow-100 text-yellow-800 bg-opacity-70
+                                        {% elif record[5] == 'Absent' %}bg-gray-100 text-gray-800 bg-opacity-70
+                                        {% else %}bg-purple-100 text-purple-800 bg-opacity-70{% endif %}">
+                                        {{ record[5] }}
+                                    </span>
+                                </td>
+                                <td class="p-3">{{ record[8] or 'N/A' }}</td>
+                                <td class="p-3">{{ record[9] or 'N/A' }}</td>
+                                <td class="p-3">
+                                    <button onclick="showDetail({{ record[0] }})" class="text-teal-500 hover:text-teal-700 mr-2">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button onclick="deleteRecord({{ record[0] }})" class="text-red-500 hover:text-red-700">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Thống kê theo phòng ban -->
+        <div class="card p-6 bg-white rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Thống kê theo phòng ban</h2>
+            <div class="overflow-x-auto">
+                <table class="table table-bordered w-full text-center">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="p-3">Phòng ban</th>
+                            <th class="p-3">Tổng ngày làm</th>
+                            <th class="p-3">Đúng giờ</th>
+                            <th class="p-3">Đi muộn</th>
+                            <th class="p-3">Vắng mặt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dept in department_stats %}
+                            <tr class="hover:bg-gray-50 transition duration-200">
+                                <td class="p-3">{{ dept[0] }}</td>
+                                <td class="p-3">{{ dept[1] }}</td>
+                                <td class="p-3">{{ dept[2] or 0 }}</td>
+                                <td class="p-3">{{ dept[3] or 0 }}</td>
+                                <td class="p-3">{{ dept[4] or 0 }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="card p-6 bg-white rounded-xl shadow-lg text-center">
+            <p class="text-gray-500">Không có dữ liệu để hiển thị. Vui lòng thay đổi bộ lọc để xem báo cáo.</p>
+        </div>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    function showDetail(attendance_id) {
+        fetch(`/attendance_detail/${attendance_id}`)
+            .then(response => response.text())
+            .then(data => {
+                Swal.fire({
+                    title: 'Chi tiết chấm công',
+                    html: data,
+                    width: '60%',
+                    showConfirmButton: false,
+                    showCloseButton: true,
+                    customClass: {
+                        popup: 'rounded-xl'
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire('Lỗi!', 'Không thể lấy dữ liệu, vui lòng thử lại!', 'error');
+            });
+    }
+
+    function deleteRecord(attendance_id) {
+        Swal.fire({
+            title: 'Bạn có chắc chắn?',
+            text: "Bạn sẽ không thể khôi phục bản ghi này!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Xóa',
+            cancelButtonText: 'Hủy'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/delete_attendance/${attendance_id}`, {
+                    method: 'POST'
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Thành công!', data.message, 'success');
+                            setTimeout(() => location.reload(), 1500);
+                        } else {
+                            Swal.fire('Lỗi!', data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire('Lỗi!', 'Không thể xóa bản ghi, vui lòng thử lại!', 'error');
+                    });
+            }
+        });
+    }
+</script>
+
+{% endblock %}
