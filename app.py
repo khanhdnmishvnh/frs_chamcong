@@ -1,7 +1,7 @@
 import os
 import sqlite3
 import bcrypt
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.utils import secure_filename
 
@@ -17,7 +17,19 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
 def init_db():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-
+# Tạo bảng Employees với EmployeeCode
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Employees (
+            EmployeeID INTEGER PRIMARY KEY AUTOINCREMENT,
+            EmployeeCode TEXT UNIQUE NOT NULL,
+            FullName TEXT NOT NULL,
+            FaceID TEXT UNIQUE NOT NULL,
+            FaceImagePath TEXT NOT NULL,
+            DepartmentID INTEGER,
+            RemainingLeaveDays INTEGER DEFAULT 0,
+            FOREIGN KEY (DepartmentID) REFERENCES Departments(DepartmentID)
+        )
+    ''')
     # Tạo bảng Departments
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Departments (
@@ -73,54 +85,73 @@ def init_db():
 from werkzeug.utils import secure_filename  # Dùng để bảo mật tên file ảnh khi tải lên
 
 # Route để thêm nhân viên
+def generate_employee_code():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    
+    # Lấy EmployeeCode mới nhất
+    cursor.execute("SELECT EmployeeCode FROM Employees ORDER BY EmployeeID DESC LIMIT 1")
+    last_code = cursor.fetchone()
+    
+    conn.close()
+    
+    if last_code and last_code[0]:
+        last_number = int(last_code[0][2:])  # Lấy số từ "NV01"
+        new_code = f"NV{last_number + 1:02d}"  # Tạo mã mới, ví dụ: "NV02"
+    else:
+        new_code = "NV01"  # Nếu chưa có nhân viên nào, bắt đầu từ NV01
+    
+    return new_code
+
 @app.route('/add_employee', methods=['GET', 'POST'])
 def add_employee():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     
     if request.method == 'POST':
+        employee_code = generate_employee_code()  # Sinh mã EmployeeCode tự động
         full_name = request.form['full_name']
         department_id = request.form['department_id']
-
-        # Tạo FaceID duy nhất cho nhân viên
+        
+        # Tạo FaceID duy nhất
         face_id = f"face_{int(datetime.timestamp(datetime.now()))}"
-
+        
         # Kiểm tra và lưu ảnh khuôn mặt
         image_paths = []
-        files = request.files.getlist('face_images')  # Lấy danh sách ảnh tải lên
+        files = request.files.getlist('face_images')
         for file in files:
             if file:
                 filename = secure_filename(f"{face_id}_{len(image_paths) + 1}.jpg")
                 file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 file.save(file_path)
                 image_paths.append(f"uploads/{filename}")
-
-        # Kiểm tra số lượng ảnh, nếu ít hơn 80 thì báo lỗi
+        
         if len(image_paths) < 80:
             flash('Cần ít nhất 80 ảnh để đăng ký khuôn mặt!', 'danger')
             return redirect(url_for('add_employee'))
-
-        # Chọn ảnh đầu tiên làm ảnh đại diện
-        face_image_path = image_paths[0]  
-
+        
+        face_image_path = image_paths[0]  # Chọn ảnh đầu tiên làm ảnh đại diện
+        
         # Thêm nhân viên vào database
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
-        cursor.execute('''INSERT INTO Employees (FullName, FaceID, FaceImagePath, DepartmentID) 
-                          VALUES (?, ?, ?, ?)''', (full_name, face_id, face_image_path, department_id))
+        cursor.execute('''
+            INSERT INTO Employees (EmployeeCode, FullName, FaceID, FaceImagePath, DepartmentID) 
+            VALUES (?, ?, ?, ?, ?)''', 
+            (employee_code, full_name, face_id, face_image_path, department_id))
         conn.commit()
         conn.close()
-
-        flash('Thêm nhân viên thành công!', 'success')
+        
+        flash(f'Nhân viên {full_name} đã được thêm với mã {employee_code}!', 'success')
         return redirect(url_for('add_employee'))
-
-    # Lấy danh sách phòng ban để chọn trong form
+    
+    # Lấy danh sách phòng ban
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute('SELECT DepartmentID, DepartmentName FROM Departments')
     departments = cursor.fetchall()
     conn.close()
-
+    
     return render_template('add_employee.html', departments=departments)
 
     # Thêm dữ liệu mẫu
