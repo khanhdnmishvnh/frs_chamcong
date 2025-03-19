@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Thêm Nhân Viên{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Thêm Nhân Viên</h1>
+
+    <!-- Form nhập thông tin nhân viên -->
+    <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
+        <form id="employeeForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="employeeID" class="block text-sm font-medium text-gray-700">Mã Nhân Viên</label>
+                <input type="text" id="employeeID" name="employeeID" required
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+            </div>
+            <div>
+                <label for="fullName" class="block text-sm font-medium text-gray-700">Họ và Tên</label>
+                <input type="text" id="fullName" name="fullName" required
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+            </div>
+        </form>
+    </div>
+
+    <!-- Phần chụp ảnh -->
+    <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Chụp Ảnh Nhân Viên</h2>
+        <div class="flex flex-col items-center">
+            <video id="webcam" autoplay playsinline class="w-64 h-48 border-2 border-gray-400 rounded-lg"></video>
+            <button id="captureBtn"
+                class="mt-4 px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition duration-300">
+                Chụp ảnh (0/80)
+            </button>
+        </div>
+    </div>
+
+    <!-- Hiển thị danh sách ảnh đã chụp -->
+    <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Ảnh đã chụp</h2>
+        <div id="capturedImages" class="grid grid-cols-4 gap-2"></div>
+    </div>
+
+    <!-- Nút Lưu -->
+    <div class="text-right">
+        <button id="saveBtn"
+            class="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-300" disabled>
+            Lưu Nhân Viên
+        </button>
+    </div>
+</div>
+
+<script>
+    let captureCount = 0;
+    let capturedImages = [];
+    const maxPhotos = 80;
+
+    // Kích hoạt webcam
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            document.getElementById("webcam").srcObject = stream;
+        } catch (error) {
+            console.error("Không thể mở camera:", error);
+        }
+    }
+
+    // Chụp ảnh từ webcam
+    document.getElementById("captureBtn").addEventListener("click", function () {
+        if (captureCount >= maxPhotos) {
+            alert("Bạn đã chụp đủ 80 ảnh!");
+            return;
+        }
+
+        const video = document.getElementById("webcam");
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Chuyển ảnh sang base64
+        const imageData = canvas.toDataURL("image/jpeg");
+        capturedImages.push(imageData);
+        captureCount++;
+
+        // Cập nhật giao diện
+        const imgElement = document.createElement("img");
+        imgElement.src = imageData;
+        imgElement.className = "w-16 h-16 border-2 border-gray-400 rounded-lg";
+        document.getElementById("capturedImages").appendChild(imgElement);
+
+        // Cập nhật số lượng ảnh
+        document.getElementById("captureBtn").textContent = `Chụp ảnh (${captureCount}/80)`;
+
+        // Kích hoạt nút lưu khi đủ ảnh
+        if (captureCount >= maxPhotos) {
+            document.getElementById("saveBtn").disabled = false;
+        }
+    });
+
+    // Lưu nhân viên và ảnh
+    document.getElementById("saveBtn").addEventListener("click", async function () {
+        const employeeID = document.getElementById("employeeID").value.trim();
+        const fullName = document.getElementById("fullName").value.trim();
+
+        if (!employeeID || !fullName) {
+            alert("Vui lòng nhập đầy đủ thông tin nhân viên.");
+            return;
+        }
+
+        // Gửi dữ liệu lên server
+        const response = await fetch("/add_employee", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ employeeID, fullName, images: capturedImages })
+        });
+
+        const result = await response.json();
+        alert(result.message);
+        if (result.success) {
+            window.location.reload();
+        }
+    });
+
+    // Bắt đầu camera khi trang load
+    window.onload = startCamera;
+</script>
+{% endblock %}
