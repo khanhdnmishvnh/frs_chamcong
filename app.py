@@ -1,10 +1,9 @@
-import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from datetime import datetime, timedelta
-import bcrypt
-from calendar import monthrange
-from flask import render_template_string
 import os
+import sqlite3
+import bcrypt
+from datetime import datetime
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
@@ -27,7 +26,7 @@ def init_db():
         )
     ''')
 
-    # Tạo bảng Employees với cột RemainingLeaveDays
+    # Tạo bảng Employees với thông tin nhân viên và đường dẫn ảnh khuôn mặt
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Employees (
             EmployeeID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,12 +34,11 @@ def init_db():
             FaceID TEXT UNIQUE NOT NULL,
             FaceImagePath TEXT NOT NULL,
             DepartmentID INTEGER,
-            RemainingLeaveDays INTEGER DEFAULT 0,
             FOREIGN KEY (DepartmentID) REFERENCES Departments(DepartmentID)
         )
     ''')
 
-    # Tạo bảng Attendance
+    # Tạo bảng Attendance để lưu dữ liệu chấm công
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Attendance (
             AttendanceID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,14 +49,11 @@ def init_db():
             Status TEXT NOT NULL,
             CheckinImagePath TEXT,
             CheckoutImagePath TEXT,
-            EvidenceImagePath TEXT,
-            ModifiedBy TEXT,
-            ModifiedAt TEXT,
             FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
         )
     ''')
 
-    # Tạo bảng Users
+    # Tạo bảng Users để quản lý đăng nhập
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Users (
             UserID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,6 +63,65 @@ def init_db():
             FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
         )
     ''')
+
+    # Tạo thư mục uploads nếu chưa tồn tại để lưu ảnh khuôn mặt nhân viên
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'])
+
+    conn.commit()
+    conn.close()
+from werkzeug.utils import secure_filename  # Dùng để bảo mật tên file ảnh khi tải lên
+
+# Route để thêm nhân viên
+@app.route('/add_employee', methods=['GET', 'POST'])
+def add_employee():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        full_name = request.form['full_name']
+        department_id = request.form['department_id']
+
+        # Tạo FaceID duy nhất cho nhân viên
+        face_id = f"face_{int(datetime.timestamp(datetime.now()))}"
+
+        # Kiểm tra và lưu ảnh khuôn mặt
+        image_paths = []
+        files = request.files.getlist('face_images')  # Lấy danh sách ảnh tải lên
+        for file in files:
+            if file:
+                filename = secure_filename(f"{face_id}_{len(image_paths) + 1}.jpg")
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(file_path)
+                image_paths.append(f"uploads/{filename}")
+
+        # Kiểm tra số lượng ảnh, nếu ít hơn 80 thì báo lỗi
+        if len(image_paths) < 80:
+            flash('Cần ít nhất 80 ảnh để đăng ký khuôn mặt!', 'danger')
+            return redirect(url_for('add_employee'))
+
+        # Chọn ảnh đầu tiên làm ảnh đại diện
+        face_image_path = image_paths[0]  
+
+        # Thêm nhân viên vào database
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        cursor.execute('''INSERT INTO Employees (FullName, FaceID, FaceImagePath, DepartmentID) 
+                          VALUES (?, ?, ?, ?)''', (full_name, face_id, face_image_path, department_id))
+        conn.commit()
+        conn.close()
+
+        flash('Thêm nhân viên thành công!', 'success')
+        return redirect(url_for('add_employee'))
+
+    # Lấy danh sách phòng ban để chọn trong form
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT DepartmentID, DepartmentName FROM Departments')
+    departments = cursor.fetchall()
+    conn.close()
+
+    return render_template('add_employee.html', departments=departments)
 
     # Thêm dữ liệu mẫu
     hashed_password = bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt())
