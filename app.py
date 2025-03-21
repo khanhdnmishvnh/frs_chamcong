@@ -114,6 +114,7 @@ def add_employee():
         employee_code = generate_employee_code()  # Sinh mã EmployeeCode tự động
         full_name = request.form['full_name']
         department_id = request.form['department_id']
+        contact_info = request.form['contact_info']  # Lấy dữ liệu địa chỉ nhân viên
         
         # Tạo FaceID duy nhất
         face_id = f"face_{int(datetime.timestamp(datetime.now()))}"
@@ -138,9 +139,9 @@ def add_employee():
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO Employees (EmployeeCode, FullName, FaceID, FaceImagePath, DepartmentID) 
-            VALUES (?, ?, ?, ?, ?)''', 
-            (employee_code, full_name, face_id, face_image_path, department_id))
+            INSERT INTO Employees (EmployeeCode, FullName, FaceID, FaceImagePath, DepartmentID, ContactInfo) 
+            VALUES (?, ?, ?, ?, ?, ?)''', 
+            (employee_code, full_name, face_id, face_image_path, department_id, contact_info))
         conn.commit()
         conn.close()
         
