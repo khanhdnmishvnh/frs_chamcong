@@ -11,28 +11,13 @@ app = Flask(__name__)
 app.secret_key = "your_secret_key"
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
-# Tạo thư mục uploads nếu chưa tồn tại
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
-# Kết nối và tạo cơ sở dữ liệu
 def init_db():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-# Tạo bảng Employees với EmployeeCode
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Employees (
-            EmployeeID INTEGER PRIMARY KEY AUTOINCREMENT,
-            EmployeeCode TEXT UNIQUE NOT NULL,
-            FullName TEXT NOT NULL,
-            FaceID TEXT UNIQUE NOT NULL,
-            FaceImagePath TEXT NOT NULL,
-            DepartmentID INTEGER,
-            RemainingLeaveDays INTEGER DEFAULT 0,
-            FOREIGN KEY (DepartmentID) REFERENCES Departments(DepartmentID)
-        )
-    ''')
-    # Tạo bảng Departments
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Departments (
             DepartmentID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,19 +25,18 @@ def init_db():
         )
     ''')
 
-    # Tạo bảng Employees với thông tin nhân viên và đường dẫn ảnh khuôn mặt
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Employees (
             EmployeeID INTEGER PRIMARY KEY AUTOINCREMENT,
             FullName TEXT NOT NULL,
-            FaceID TEXT UNIQUE NOT NULL,
             FaceImagePath TEXT NOT NULL,
+            ContactInfo TEXT NOT NULL,
             DepartmentID INTEGER,
+            RemainingLeaveDays INTEGER DEFAULT 0,
             FOREIGN KEY (DepartmentID) REFERENCES Departments(DepartmentID)
         )
     ''')
 
-    # Tạo bảng Attendance để lưu dữ liệu chấm công
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Attendance (
             AttendanceID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,11 +47,13 @@ def init_db():
             Status TEXT NOT NULL,
             CheckinImagePath TEXT,
             CheckoutImagePath TEXT,
+            EvidenceImagePath TEXT,
+            ModifiedBy TEXT,
+            ModifiedAt TEXT,
             FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
         )
     ''')
 
-    # Tạo bảng Users để quản lý đăng nhập
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Users (
             UserID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,32 +64,10 @@ def init_db():
         )
     ''')
 
-    # Tạo thư mục uploads nếu chưa tồn tại để lưu ảnh khuôn mặt nhân viên
-    if not os.path.exists(app.config['UPLOAD_FOLDER']):
-        os.makedirs(app.config['UPLOAD_FOLDER'])
-
     conn.commit()
     conn.close()
-from werkzeug.utils import secure_filename  # Dùng để bảo mật tên file ảnh khi tải lên
 
-# Route để thêm nhân viên
-def generate_employee_code():
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    
-    # Lấy EmployeeCode mới nhất
-    cursor.execute("SELECT EmployeeCode FROM Employees ORDER BY EmployeeID DESC LIMIT 1")
-    last_code = cursor.fetchone()
-    
-    conn.close()
-    
-    if last_code and last_code[0]:
-        last_number = int(last_code[0][2:])  # Lấy số từ "NV01"
-        new_code = f"NV{last_number + 1:02d}"  # Tạo mã mới, ví dụ: "NV02"
-    else:
-        new_code = "NV01"  # Nếu chưa có nhân viên nào, bắt đầu từ NV01
-    
-    return new_code
+init_db()
 
 @app.route('/add_employee', methods=['GET', 'POST'])
 def add_employee():
@@ -111,50 +75,42 @@ def add_employee():
         return redirect(url_for('login'))
     
     if request.method == 'POST':
-        employee_code = generate_employee_code()  # Sinh mã EmployeeCode tự động
         full_name = request.form['full_name']
         department_id = request.form['department_id']
-        contact_info = request.form['contact_info']  # Lấy dữ liệu địa chỉ nhân viên
-        
-        # Tạo FaceID duy nhất
-        face_id = f"face_{int(datetime.timestamp(datetime.now()))}"
-        
-        # Kiểm tra và lưu ảnh khuôn mặt
+        contact_info = request.form['contact_info']
+
+        # xử lý ảnh
         image_paths = []
         files = request.files.getlist('face_images')
         for file in files:
             if file:
-                filename = secure_filename(f"{face_id}_{len(image_paths) + 1}.jpg")
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(file_path)
+                filename = secure_filename(file.filename)
+                path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(path)
                 image_paths.append(f"uploads/{filename}")
-        
-        if len(image_paths) < 80:
-            flash('Cần ít nhất 80 ảnh để đăng ký khuôn mặt!', 'danger')
+
+        if len(image_paths) < 1:
+            flash('Vui lòng tải lên ít nhất 1 ảnh khuôn mặt!', 'danger')
             return redirect(url_for('add_employee'))
-        
-        face_image_path = image_paths[0]  # Chọn ảnh đầu tiên làm ảnh đại diện
-        
-        # Thêm nhân viên vào database
+
+        face_image_path = image_paths[0]
+
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO Employees (EmployeeCode, FullName, FaceID, FaceImagePath, DepartmentID, ContactInfo) 
-            VALUES (?, ?, ?, ?, ?, ?)''', 
-            (employee_code, full_name, face_id, face_image_path, department_id, contact_info))
+            INSERT INTO Employees (FullName, FaceImagePath, ContactInfo, DepartmentID, RemainingLeaveDays)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (full_name, face_image_path, contact_info, department_id, 0))
         conn.commit()
         conn.close()
-        
-        flash(f'Nhân viên {full_name} đã được thêm với mã {employee_code}!', 'success')
-        return redirect(url_for('add_employee'))
-    
-    # Lấy danh sách phòng ban
+
+        return redirect(url_for('employee_list'))
+
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute('SELECT DepartmentID, DepartmentName FROM Departments')
     departments = cursor.fetchall()
     conn.close()
-    
     return render_template('add_employee.html', departments=departments)
 
     # Thêm dữ liệu mẫu
@@ -165,8 +121,8 @@ def add_employee():
     cursor.execute('INSERT OR IGNORE INTO Departments (DepartmentName) VALUES (?)', ('Nhân sự',))
 
     # Thêm nhân viên
-    cursor.execute('INSERT OR IGNORE INTO Employees (FullName, FaceID, FaceImagePath, DepartmentID, RemainingLeaveDays) VALUES (?, ?, ?, ?, ?)',
-                   ('Đỗ Ngọc Khánh', 'face_001', 'faces/emp1.jpg', 1, 3))
+    cursor.execute('INSERT OR IGNORE INTO Employees (FullName, EmployeeID, FaceImagePath, DepartmentID, ContactInfo, RemainingLeaveDays) VALUES (?, ?, ?, ?, ?, ?)',
+                   ('Đỗ Ngọc Khánh', 'face_001', 'faces/emp1.jpg', 1, 0, 3))
 
     # Thêm người dùng
     cursor.execute('INSERT OR IGNORE INTO Users (Username, Password, EmployeeID) VALUES (?, ?, ?)',
@@ -760,6 +716,53 @@ def logout():
     session.pop('logged_in', None)
     session.pop('username', None)
     return redirect(url_for('login'))
+
+@app.route('/employee_list')
+def employee_list():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT e.EmployeeID, e.FullName, e.FaceImagePath, e.ContactInfo, d.DepartmentName
+        FROM Employees e
+        LEFT JOIN Departments d ON e.DepartmentID = d.DepartmentID
+    ''')
+    employees = cursor.fetchall()
+    conn.close()
+
+    return render_template('employee_list.html', employees=employees)
+
+# -------- THÊM CỘT ContactInfo NẾU CHƯA CÓ --------
+def add_contactinfo_column():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute("ALTER TABLE Employees ADD COLUMN ContactInfo TEXT")
+        print("Đã thêm cột ContactInfo vào bảng Employees")
+    except sqlite3.OperationalError as e:
+        print("Có thể cột ContactInfo đã tồn tại:", e)
+    conn.commit()
+    conn.close()
+
+add_contactinfo_column()
+
+@app.route('/edit_employee/<int:id>', methods=['GET', 'POST'])
+def edit_employee(id):
+    # Hiển thị form sửa thông tin nhân viên (chưa làm phần này)
+    pass
+
+@app.route('/delete_employee/<int:id>', methods=['POST'])
+def delete_employee(id):
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM Employees WHERE EmployeeID = ?", (id,))
+    conn.commit()
+    conn.close()
+    flash("Xóa nhân viên thành công!", "success")
+    return redirect(url_for('employee_list'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
