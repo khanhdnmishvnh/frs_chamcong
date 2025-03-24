@@ -202,35 +202,51 @@
             </div>
             <h2 class="text-xl font-bold">Hệ thống nhận diện khuôn mặt</h2>
         </div>
-        <nav>
-            <!-- <a href="{{ url_for('login') }}" {% if request.endpoint == 'login' %}class="bg-teal-700"{% endif %}>
-                <i class="fas fa-sign-in-alt"></i> Đăng nhập
-            </a> -->
+        <nav class="flex flex-col space-y-2 text-white text-sm font-normal">
             {% if session.logged_in %}
-                <a href="{{ url_for('face_recognition') }}" {% if request.endpoint == 'face_recognition' %}class="bg-teal-700"{% endif %}>
-                    <i class="fas fa-camera"></i> Nhận diện khuôn mặt
+                <a href="{{ url_for('face_recognition') }}"
+                   class="flex items-center gap-3 px-4 py-2 rounded-md hover:bg-teal-600 transition
+                          {% if request.endpoint == 'face_recognition' %}bg-teal-700{% endif %}">
+                    <i class="fas fa-camera w-5 text-center"></i> Nhận diện khuôn mặt
                 </a>
-                <a href="{{ url_for('attendance_history') }}" {% if request.endpoint == 'attendance_history' %}class="bg-teal-700"{% endif %}>
-                    <i class="fas fa-calendar-alt"></i> Lịch sử chấm công
+        
+                <a href="{{ url_for('attendance_history') }}"
+                   class="flex items-center gap-3 px-4 py-2 rounded-md hover:bg-teal-600 transition
+                          {% if request.endpoint == 'attendance_history' %}bg-teal-700{% endif %}">
+                    <i class="fas fa-calendar-alt w-5 text-center"></i> Lịch sử chấm công
                 </a>
-                <a href="{{ url_for('manual_checkin') }}" {% if request.endpoint == 'manual_checkin' %}class="bg-teal-700"{% endif %}>
-                    <i class="fas fa-user-edit"></i> Chấm công thủ công
+        
+                <a href="{{ url_for('manual_checkin') }}"
+                   class="flex items-center gap-3 px-4 py-2 rounded-md hover:bg-teal-600 transition
+                          {% if request.endpoint == 'manual_checkin' %}bg-teal-700{% endif %}">
+                    <i class="fas fa-user-edit w-5 text-center"></i> Chấm công thủ công
                 </a>
-                <a href="{{ url_for('report') }}" {% if request.endpoint == 'report' %}class="bg-teal-700"{% endif %}>
-                    <i class="fas fa-chart-bar"></i> Báo cáo
-                </a>   
-                <a href="{{ url_for('add_employee') }}">
-                    <i class="fas fa-user-plus"></i> Thêm nhân viên     
+        
+                <a href="{{ url_for('report') }}"
+                   class="flex items-center gap-3 px-4 py-2 rounded-md hover:bg-teal-600 transition
+                          {% if request.endpoint == 'report' %}bg-teal-700{% endif %}">
+                    <i class="fas fa-chart-bar w-5 text-center"></i> Báo cáo
                 </a>
-                <a href="{{ url_for('employee_list') }}" {% if request.endpoint == 'employee_list' %}class="bg-teal-700"{% endif %}>
-                    <i class="fas fa-users"></i> Danh sách nhân viên
-                </a>                
-                <a href="#" id="logout-link" class="text-red-300 hover:text-red-100">
-                    <i class="fas fa-sign-out-alt"></i> Đăng xuất
+        
+                <a href="{{ url_for('add_employee') }}"
+                   class="flex items-center gap-3 px-4 py-2 rounded-md hover:bg-teal-600 transition">
+                    <i class="fas fa-user-plus w-5 text-center"></i> Thêm nhân viên
                 </a>
-                
+        
+                <a href="{{ url_for('employee_list') }}"
+                   class="flex items-center gap-3 px-4 py-2 rounded-md hover:bg-teal-600 transition
+                          {% if request.endpoint == 'employee_list' %}bg-teal-700{% endif %}">
+                    <i class="fas fa-users w-5 text-center"></i> Danh sách nhân viên
+                </a>
+        
+                <a href="#" id="logout-link"
+                   class="flex items-center gap-3 px-4 py-2 rounded-md text-red-300 hover:text-red-100 hover:bg-red-500 transition">
+                    <i class="fas fa-sign-out-alt w-5 text-center"></i> Đăng xuất
+                </a>
             {% endif %}
         </nav>
+        
+        
     </div>
 
     <!-- Popup xác nhận đăng xuất -->
