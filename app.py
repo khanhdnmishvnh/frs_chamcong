@@ -719,34 +719,30 @@ def logout():
 
 @app.route('/employee_list')
 def employee_list():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT e.EmployeeID, e.FullName, e.FaceImagePath, e.ContactInfo, d.DepartmentName
+        SELECT e.EmployeeID, e.FullName, d.DepartmentName, e.ContactInfo, e.FaceImagePath
         FROM Employees e
         LEFT JOIN Departments d ON e.DepartmentID = d.DepartmentID
     ''')
     employees = cursor.fetchall()
     conn.close()
-
     return render_template('employee_list.html', employees=employees)
 
-# -------- THÊM CỘT ContactInfo NẾU CHƯA CÓ --------
-def add_contactinfo_column():
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    try:
-        cursor.execute("ALTER TABLE Employees ADD COLUMN ContactInfo TEXT")
-        print("Đã thêm cột ContactInfo vào bảng Employees")
-    except sqlite3.OperationalError as e:
-        print("Có thể cột ContactInfo đã tồn tại:", e)
-    conn.commit()
-    conn.close()
+# # -------- THÊM CỘT ContactInfo NẾU CHƯA CÓ --------
+# def add_contactinfo_column():
+#     conn = sqlite3.connect('database.db')
+#     cursor = conn.cursor()
+#     try:
+#         cursor.execute("ALTER TABLE Employees ADD COLUMN ContactInfo TEXT")
+#         print("Đã thêm cột ContactInfo vào bảng Employees")
+#     except sqlite3.OperationalError as e:
+#         print("Có thể cột ContactInfo đã tồn tại:", e)
+#     conn.commit()
+#     conn.close()
 
-add_contactinfo_column()
+# add_contactinfo_column()
 
 @app.route('/edit_employee/<int:id>', methods=['GET', 'POST'])
 def edit_employee(id):
