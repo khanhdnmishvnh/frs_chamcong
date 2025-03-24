@@ -18,13 +18,13 @@ def init_db():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
 
+    # Tạo bảng
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Departments (
             DepartmentID INTEGER PRIMARY KEY AUTOINCREMENT,
             DepartmentName TEXT NOT NULL
         )
     ''')
-
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Employees (
             EmployeeID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,35 +37,22 @@ def init_db():
         )
     ''')
 
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Attendance (
-            AttendanceID INTEGER PRIMARY KEY AUTOINCREMENT,
-            EmployeeID INTEGER NOT NULL,
-            CheckInTime TEXT,
-            CheckOutTime TEXT,
-            Date TEXT NOT NULL,
-            Status TEXT NOT NULL,
-            CheckinImagePath TEXT,
-            CheckoutImagePath TEXT,
-            EvidenceImagePath TEXT,
-            ModifiedBy TEXT,
-            ModifiedAt TEXT,
-            FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
-        )
-    ''')
+    # Thêm dữ liệu mẫu nếu bảng còn trống
+    cursor.execute("SELECT COUNT(*) FROM Departments")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO Departments (DepartmentName) VALUES (?)", ('Kinh doanh',))
+        cursor.execute("INSERT INTO Departments (DepartmentName) VALUES (?)", ('Nhân sự',))
 
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Users (
-            UserID INTEGER PRIMARY KEY AUTOINCREMENT,
-            Username TEXT UNIQUE NOT NULL,
-            Password TEXT NOT NULL,
-            EmployeeID INTEGER,
-            FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
-        )
-    ''')
+    cursor.execute("SELECT COUNT(*) FROM Employees")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute('''
+            INSERT INTO Employees (FullName, FaceImagePath, ContactInfo, DepartmentID, RemainingLeaveDays)
+            VALUES (?, ?, ?, ?, ?)
+        ''', ('Nguyễn Văn A', 'uploads/default1.jpg', '0901234567', 1, 5))
 
     conn.commit()
     conn.close()
+
 
 init_db()
 
@@ -79,22 +66,41 @@ def add_employee():
         department_id = request.form['department_id']
         contact_info = request.form['contact_info']
 
-        # xử lý ảnh
+        # ===== ĐOẠN MỚI: decode base64 từ form 'face_images' =====
+        import json, base64
+        from werkzeug.utils import secure_filename
+
+        face_images_json = request.form.get('face_images', '[]')  
+        face_images_list = json.loads(face_images_json)  # Mảng base64
         image_paths = []
-        files = request.files.getlist('face_images')
-        for file in files:
-            if file:
-                filename = secure_filename(file.filename)
-                path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(path)
-                image_paths.append(f"uploads/{filename}")
+
+        for idx, base64_img in enumerate(face_images_list):
+            if not base64_img:
+                continue
+
+            # Tách bỏ tiền tố data:image/jpeg;base64,
+            header, data = base64_img.split(',', 1)
+            img_bytes = base64.b64decode(data)
+
+            # Tạo filename duy nhất
+            filename = f"{secure_filename(full_name)}_{idx}.jpg"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+            # Ghi bytes xuống file
+            with open(filepath, 'wb') as f:
+                f.write(img_bytes)
+
+            image_paths.append(f"uploads/{filename}")
 
         if len(image_paths) < 1:
-            flash('Vui lòng tải lên ít nhất 1 ảnh khuôn mặt!', 'danger')
+            flash('Vui lòng chụp ít nhất 1 ảnh khuôn mặt!', 'danger')
             return redirect(url_for('add_employee'))
 
+        # Lấy ảnh đầu làm FaceImagePath
         face_image_path = image_paths[0]
+        # ===== HẾT ĐOẠN MỚI =====
 
+        # Insert vào DB
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
         cursor.execute('''
@@ -106,6 +112,7 @@ def add_employee():
 
         return redirect(url_for('employee_list'))
 
+    # GET: hiển thị form
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute('SELECT DepartmentID, DepartmentName FROM Departments')
@@ -113,47 +120,6 @@ def add_employee():
     conn.close()
     return render_template('add_employee.html', departments=departments)
 
-    # Thêm dữ liệu mẫu
-    hashed_password = bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt())
-    
-    # Thêm phòng ban
-    cursor.execute('INSERT OR IGNORE INTO Departments (DepartmentName) VALUES (?)', ('Kinh doanh',))
-    cursor.execute('INSERT OR IGNORE INTO Departments (DepartmentName) VALUES (?)', ('Nhân sự',))
-
-    # Thêm nhân viên
-    cursor.execute('INSERT OR IGNORE INTO Employees (FullName, EmployeeID, FaceImagePath, DepartmentID, ContactInfo, RemainingLeaveDays) VALUES (?, ?, ?, ?, ?, ?)',
-                   ('Đỗ Ngọc Khánh', 'face_001', 'faces/emp1.jpg', 1, 0, 3))
-
-    # Thêm người dùng
-    cursor.execute('INSERT OR IGNORE INTO Users (Username, Password, EmployeeID) VALUES (?, ?, ?)',
-                   ('admin', hashed_password, 1))
-
-    # Thêm dữ liệu chấm công mẫu cho tháng 3/2025
-    for day in range(1, 16):  # 01/03/2025 đến 15/03/2025
-        date_str = f'2025-03-{day:02d}'
-        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-        day_of_week = date_obj.weekday()
-        if day_of_week == 5 or day_of_week == 6:  # Thứ 7, Chủ nhật
-            cursor.execute('INSERT OR IGNORE INTO Attendance (EmployeeID, CheckInTime, CheckOutTime, Date, Status) VALUES (?, ?, ?, ?, ?)',
-                           (1, None, None, date_str, 'Weekend'))
-        else:
-            cursor.execute('INSERT OR IGNORE INTO Attendance (EmployeeID, CheckInTime, CheckOutTime, Date, Status) VALUES (?, ?, ?, ?, ?)',
-                           (1, f'2025-03-{day:02d} 08:00:00', f'2025-03-{day:02d} 17:00:00', date_str, 'OnTime'))
-    
-    # Thêm các trường hợp đặc biệt
-    cursor.execute('INSERT OR IGNORE INTO Attendance (EmployeeID, CheckInTime, CheckOutTime, Date, Status) VALUES (?, ?, ?, ?, ?)',
-                   (1, None, None, '2025-03-18', 'P'))  # Không chấm công cả vào và ra
-    cursor.execute('INSERT OR IGNORE INTO Attendance (EmployeeID, CheckInTime, CheckOutTime, Date, Status) VALUES (?, ?, ?, ?, ?)',
-                   (1, '2025-03-19 08:00:00', None, '2025-03-19', 'Q2'))  # Quên chấm công lúc ra
-    cursor.execute('INSERT OR IGNORE INTO Attendance (EmployeeID, CheckInTime, CheckOutTime, Date, Status) VALUES (?, ?, ?, ?, ?)',
-                   (1, None, '2025-03-20 17:00:00', '2025-03-20', 'Q1'))  # Quên chấm công lúc vào
-    cursor.execute('INSERT OR IGNORE INTO Attendance (EmployeeID, CheckInTime, CheckOutTime, Date, Status) VALUES (?, ?, ?, ?, ?)',
-                   (1, '2025-03-21 08:30:00', '2025-03-21 17:00:00', '2025-03-21', 'M'))  # Đi làm muộn
-    cursor.execute('INSERT OR IGNORE INTO Attendance (EmployeeID, CheckInTime, CheckOutTime, Date, Status) VALUES (?, ?, ?, ?, ?)',
-                   (1, '2025-03-22 08:00:00', '2025-03-22 16:30:00', '2025-03-22', 'S'))  # Về sớm
-
-    conn.commit()
-    conn.close()
 
 init_db()
 
