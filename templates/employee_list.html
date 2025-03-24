@@ -2,53 +2,62 @@
 {% block title %}Danh sách nhân viên{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6">
-  <h1 class="text-3xl font-bold text-gray-800 mb-6">Danh sách nhân viên</h1>
+<div class="container mx-auto px-4 py-8">
+  <h1 class="text-3xl font-semibold text-gray-800 mb-6">Danh sách nhân viên</h1>
 
   {% if employees %}
-  <table class="min-w-full bg-white border rounded-lg overflow-hidden shadow-md">
-    <thead class="bg-teal-600 text-white">
-      <tr>
-        <th class="py-3 px-4 text-left">#</th>
-        <th class="py-3 px-4 text-left">Họ tên</th>
-        <th class="py-3 px-4 text-left">Phòng ban</th>
-        <th class="py-3 px-4 text-left">Số điện thoại</th>
-        <th class="py-3 px-4 text-left">Ảnh</th>
-        <th class="py-3 px-4 text-center">Thao tác</th>
-      </tr>
-    </thead>
-    <tbody class="text-gray-700">
-      {% for emp in employees %}
-      <tr class="border-t hover:bg-gray-50">
-        <td class="py-2 px-4">{{ loop.index }}</td>
-        <td class="py-2 px-4">{{ emp[1] }}</td>
-        <td class="py-2 px-4">{{ emp[2] or 'Chưa rõ' }}</td>
-        <td class="py-2 px-4">{{ emp[3] or 'Không có' }}</td>
-        <td class="py-2 px-4">
-          {% if emp[4] %}
-            <img src="{{ url_for('static', filename=emp[4]) }}" alt="Ảnh" class="h-12 w-12 rounded-full object-cover">
-          {% else %}
-            Không có ảnh
-          {% endif %}
-        </td>
-        <td class="py-2 px-4 text-center">
-          <!-- Nút sửa -->
-          <a href="{{ url_for('edit_employee', id=emp[0]) }}"
-             class="bg-yellow-200 text-yellow-800 px-3 py-1 rounded mr-2 hover:bg-yellow-300">
-            Sửa
-          </a>
+  <div class="overflow-x-auto bg-white shadow-lg rounded-lg">
+    <table class="min-w-full text-sm text-gray-800">
+      <thead class="bg-white text-gray-800 font-semibold border-b border-gray-200">
+        <tr>
+          <th class="py-3 px-4 text-left">STT</th>
+          <th class="py-3 px-4 text-left">Mã nhân viên</th>
+          <th class="py-3 px-4 text-left">Tên nhân viên</th>
+          <th class="py-3 px-4 text-left">Phòng ban</th>
+          <th class="py-3 px-4 text-left">Số điện thoại</th>
+          <th class="py-3 px-4 text-left">Ảnh</th>
+          <th class="py-3 px-4 text-center">Hành động</th>
+        </tr>
+      </thead>      
+      <tbody class="divide-y divide-gray-200">
+        {% for emp in employees %}
+        <tr class="hover:bg-gray-50">
+          <td class="py-3 px-4">{{ loop.index }}</td>
+          <td class="py-3 px-4">{{ emp[0] }}</td> <!-- Mã nhân viên -->
+          <td class="py-3 px-4">{{ emp[1] }}</td>
+          <td class="py-3 px-4">{{ emp[2] or 'Chưa rõ' }}</td>
+          <td class="py-3 px-4">{{ emp[3] or 'Không có' }}</td>
+          <td class="py-3 px-4">
+            {% if emp[4] %}
+              <img src="{{ url_for('static', filename=emp[4]) }}" alt="Ảnh"
+                   class="h-10 w-10 rounded-full object-cover ring-2 ring-teal-500 shadow-sm">
+            {% else %}
+              <span class="text-gray-400 italic">Không có ảnh</span>
+            {% endif %}
+          </td>
+          <td class="py-3 px-4 text-center">
+            <div class="flex justify-center items-center space-x-2">
+              <!-- Sửa -->
+              <a href="{{ url_for('edit_employee', id=emp[0]) }}"
+                 class="text-yellow-500 hover:text-yellow-600" title="Sửa">
+                <i class="fas fa-edit text-lg"></i>
+              </a>
 
-          <!-- Nút xóa -->
-          <form action="{{ url_for('delete_employee', id=emp[0]) }}" method="POST" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa nhân viên này?');">
-            <button type="submit" class="bg-red-200 text-red-800 px-3 py-1 rounded hover:bg-red-300">
-              Xóa
-            </button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+              <!-- Xóa -->
+              <form action="{{ url_for('delete_employee', id=emp[0]) }}" method="POST"
+                    onsubmit="return confirm('Bạn có chắc muốn xóa nhân viên này?');">
+                <button type="submit" title="Xóa"
+                        class="text-red-500 hover:text-red-600">
+                  <i class="fas fa-trash-alt text-lg"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% else %}
     <p class="text-gray-600 mt-4">Chưa có nhân viên nào được thêm.</p>
   {% endif %}
