@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Sửa Nhân Viên{% endblock %}
+
+{% block content %}
+<style>
+  .btn-gradient {
+    background: linear-gradient(90deg, #0a8e8e 0%, #14b8a6 100%);
+    transition: all 0.3s ease;
+    color: white;
+  }
+  .btn-gradient:hover {
+    background: linear-gradient(90deg, #14b8a6 0%, #0a8e8e 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(10, 142, 142, 0.25);
+  }
+  .image-slot {
+    width: 80px;
+    height: 80px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+  }
+</style>
+
+<div class="container mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-gray-800 mb-6">Sửa Nhân Viên</h1>
+
+  <!--
+    emp = (EmployeeID, FullName, ContactInfo, DepartmentID)
+    departments = [(DeptID, DeptName), ...]
+  -->
+  <form id="employeeForm" action="" method="POST" enctype="multipart/form-data" onsubmit="return validateForm();">
+    <!-- THÔNG TIN NHÂN VIÊN -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label for="employee_id" class="block text-sm font-medium text-gray-700">Mã nhân viên</label>
+        <!-- Hiển thị ID cũ, không cho sửa -->
+        <input type="text" id="employee_id" name="employee_id"
+          class="mt-1 p-2 w-full border rounded-md bg-gray-100 text-gray-500"
+          value="{{ emp[0] }}" readonly>
+      </div>
+
+      <div>
+        <label for="department_id" class="block text-sm font-medium text-gray-700">Phòng ban</label>
+        <select id="department_id" name="department_id" required
+          class="mt-1 p-2 w-full border rounded-md">
+          <option value="">Chọn phòng ban</option>
+          {% for dept in departments %}
+          <option value="{{ dept[0] }}"
+            {% if dept[0] == emp[3] %}selected{% endif %}>
+            {{ dept[1] }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="full_name" class="block text-sm font-medium text-gray-700">Họ tên</label>
+        <input type="text" id="full_name" name="full_name" required
+          class="mt-1 p-2 w-full border rounded-md"
+          value="{{ emp[1] }}">
+      </div>
+
+      <div>
+        <label for="contact_info" class="block text-sm font-medium text-gray-700">Số điện thoại</label>
+        <input type="text" id="contact_info" name="contact_info" required
+          class="mt-1 p-2 w-full border rounded-md"
+          value="{{ emp[2] }}">
+      </div>
+    </div>
+
+    <!-- CAMERA CHỤP ẢNH 80 TẤM -->
+    <div class="mt-8 p-6 bg-white rounded-xl shadow-md text-center">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Chụp Lại Ảnh Khuôn Mặt </h2>
+      <p class="text-sm text-gray-500 mb-2">
+        Nếu bạn muốn thay thế ảnh cũ, hãy chụp 80 ảnh mới. Nếu không, có thể bỏ qua.
+      </p>
+      <div class="flex justify-center">
+        <video id="webcam" autoplay playsinline class="border-2 border-gray-400 rounded-lg w-[480px] h-[360px]"></video>
+      </div>
+      <div class="flex justify-center mt-4">
+        <!-- Khi bấm nút => tự động chụp 80 tấm -->
+        <button type="button" id="captureBtn"
+          class="btn-gradient px-6 py-2 rounded-md font-semibold flex items-center gap-2">
+          <i class="fas fa-camera"></i> Chụp ảnh 
+        </button>
+      </div>
+    </div>
+
+    <!-- ẢNH ĐÃ CHỤP -->
+    <div class="mt-8 p-6 bg-white rounded-xl shadow-md">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Ảnh mới đã chụp</h2>
+      <div id="capturedImages" class="grid grid-cols-8 gap-2">
+        {% for i in range(80) %}
+        <div id="imgWrapper_{{ i }}" class="relative image-slot"></div>
+        {% endfor %}
+      </div>
+      <input type="hidden" id="face_images" name="face_images">
+    </div>
+
+    <!-- NÚT LƯU -->
+    <div class="mt-6 flex justify-end">
+      <button type="submit" id="saveBtn"
+        class="btn-gradient px-6 py-2 rounded-md font-semibold flex items-center gap-2">
+        <i class="fas fa-save"></i> Cập nhật
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const video = document.getElementById("webcam");
+  const captureBtn = document.getElementById("captureBtn");
+  const faceImagesInput = document.getElementById("face_images");
+  const saveBtn = document.getElementById("saveBtn");
+
+  let capturedImages = [];
+  let currentSlot = 0;
+  const maxPhotos = 80;
+
+  // Mở camera
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+    } catch (error) {
+      console.error("Không thể mở camera:", error);
+    }
+  }
+
+  // Chụp TỰ ĐỘNG 80 ảnh (mỗi 100ms)
+  captureBtn.addEventListener("click", () => {
+    if (currentSlot >= maxPhotos) {
+      alert("Bạn đã chụp đủ 80 ảnh!");
+      return;
+    }
+
+    let interval = setInterval(() => {
+      if (currentSlot >= maxPhotos) {
+        clearInterval(interval);
+        faceImagesInput.value = JSON.stringify(capturedImages);
+        alert("Đã chụp đủ 80 ảnh!");
+        return;
+      }
+
+      // Tạo canvas và chụp
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = canvas.toDataURL("image/jpeg");
+      capturedImages[currentSlot] = imageData;
+
+      // Hiển thị preview
+      const wrapper = document.getElementById(`imgWrapper_${currentSlot}`);
+      wrapper.innerHTML = `
+        <img src="${imageData}" class="w-full h-full object-cover rounded-md border" />
+        <button onclick="removeImage(${currentSlot})"
+          class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs">
+          x
+        </button>
+      `;
+
+      currentSlot++;
+      faceImagesInput.value = JSON.stringify(capturedImages);
+    }, 100); // 80 ảnh trong ~8 giây
+  });
+
+  // Xóa 1 ảnh đã chụp
+  function removeImage(index) {
+    capturedImages[index] = null;
+    const wrapper = document.getElementById(`imgWrapper_${index}`);
+    wrapper.innerHTML = '';
+    faceImagesInput.value = JSON.stringify(capturedImages);
+    currentSlot = capturedImages.filter(Boolean).length;
+  }
+
+  // Kiểm tra form
+  function validateForm() {
+    // Kiểm tra: Họ tên, SĐT, ...
+    // => ID, FullName, ...
+    const name = document.getElementById("full_name").value.trim();
+    const phone = document.getElementById("contact_info").value.trim();
+    const dept = document.getElementById("department_id").value;
+
+    if (!name || !phone || !dept) {
+      alert("Vui lòng điền đầy đủ thông tin (tên, điện thoại, phòng ban).");
+      return false;
+    }
+
+    // Ảnh: user có thể CHƯA chụp ảnh mới => ta CHO PHÉP
+    // => Nếu BẮT BUỘC chụp lại, thì:
+    //   if (capturedImages.filter(Boolean).length < 1) {
+    //       alert("Vui lòng chụp ảnh mới!");
+    //       return false;
+    //   }
+
+    return true;
+  }
+
+  window.onload = startCamera;
+</script>
+{% endblock %}
