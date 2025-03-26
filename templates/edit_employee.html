@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block title %}Sửa Nhân Viên{% endblock %}
-
 {% block content %}
 <style>
   .btn-gradient {
@@ -25,10 +24,6 @@
 <div class="container mx-auto px-4 py-8">
   <h1 class="text-3xl font-bold text-gray-800 mb-6">Sửa Nhân Viên</h1>
 
-  <!--
-    emp = (EmployeeID, FullName, ContactInfo, DepartmentID)
-    departments = [(DeptID, DeptName), ...]
-  -->
   <form id="employeeForm" action="" method="POST" enctype="multipart/form-data" onsubmit="return validateForm();">
     <!-- THÔNG TIN NHÂN VIÊN -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -178,8 +173,6 @@
 
   // Kiểm tra form
   function validateForm() {
-    // Kiểm tra: Họ tên, SĐT, ...
-    // => ID, FullName, ...
     const name = document.getElementById("full_name").value.trim();
     const phone = document.getElementById("contact_info").value.trim();
     const dept = document.getElementById("department_id").value;
@@ -188,14 +181,6 @@
       alert("Vui lòng điền đầy đủ thông tin (tên, điện thoại, phòng ban).");
       return false;
     }
-
-    // Ảnh: user có thể CHƯA chụp ảnh mới => ta CHO PHÉP
-    // => Nếu BẮT BUỘC chụp lại, thì:
-    //   if (capturedImages.filter(Boolean).length < 1) {
-    //       alert("Vui lòng chụp ảnh mới!");
-    //       return false;
-    //   }
-
     return true;
   }
 
