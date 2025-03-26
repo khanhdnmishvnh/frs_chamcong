@@ -8,13 +8,11 @@
     transition: all 0.3s ease;
     color: white;
   }
-
   .btn-gradient:hover {
     background: linear-gradient(90deg, #14b8a6 0%, #0a8e8e 100%);
     transform: translateY(-2px);
     box-shadow: 0 6px 12px rgba(10, 142, 142, 0.25);
   }
-
   .image-slot {
     width: 80px;
     height: 80px;
@@ -33,7 +31,7 @@
       <div>
         <label for="employee_id" class="block text-sm font-medium text-gray-700">Mã nhân viên</label>
         <input type="text" id="employee_id" name="employee_id"
-          class="mt-1 p-2 w-full border rounded-md bg-white" value="{{ employee_id }}">
+          class="mt-1 p-2 w-full border rounded-md bg-white">
       </div>
 
       <div>
@@ -67,6 +65,7 @@
         <video id="webcam" autoplay playsinline class="border-2 border-gray-400 rounded-lg w-[480px] h-[360px]"></video>
       </div>
       <div class="flex justify-center mt-4">
+        <!-- Khi bấm nút => tự động chụp 80 tấm -->
         <button type="button" id="captureBtn"
           class="btn-gradient px-6 py-2 rounded-md font-semibold flex items-center gap-2">
           <i class="fas fa-camera"></i> Chụp ảnh
@@ -87,7 +86,7 @@
 
     <!-- NÚT LƯU -->
     <div class="mt-6 flex justify-end">
-      <button type="submit" id="saveBtn"
+      <button type="submit" id="saveBtn" disabled
         class="btn-gradient px-6 py-2 rounded-md font-semibold flex items-center gap-2">
         <i class="fas fa-save"></i> Lưu Nhân Viên
       </button>
@@ -98,7 +97,6 @@
 <script>
   const video = document.getElementById("webcam");
   const captureBtn = document.getElementById("captureBtn");
-  const capturedImagesDiv = document.getElementById("capturedImages");
   const faceImagesInput = document.getElementById("face_images");
   const saveBtn = document.getElementById("saveBtn");
 
@@ -106,6 +104,7 @@
   let currentSlot = 0;
   const maxPhotos = 80;
 
+  // Mở camera
   async function startCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -115,7 +114,7 @@
     }
   }
 
-  // ✅ Chụp tự động 80 ảnh liên tục
+  // Chụp TỰ ĐỘNG 80 ảnh (mỗi 100ms)
   captureBtn.addEventListener("click", () => {
     if (currentSlot >= maxPhotos) {
       alert("Bạn đã chụp đủ 80 ảnh!");
@@ -131,6 +130,7 @@
         return;
       }
 
+      // Tạo canvas và chụp
       const canvas = document.createElement("canvas");
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -139,28 +139,36 @@
       const imageData = canvas.toDataURL("image/jpeg");
       capturedImages[currentSlot] = imageData;
 
+      // Hiển thị preview
       const wrapper = document.getElementById(`imgWrapper_${currentSlot}`);
       wrapper.innerHTML = `
         <img src="${imageData}" class="w-full h-full object-cover rounded-md border" />
-        <button onclick="removeImage(${currentSlot})" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs">x</button>
+        <button onclick="removeImage(${currentSlot})"
+          class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs">
+          x
+        </button>
       `;
 
       currentSlot++;
       faceImagesInput.value = JSON.stringify(capturedImages);
-    }, 100); // 80 ảnh trong khoảng 8 giây
+    }, 100); // 80 ảnh trong ~8 giây
   });
 
+  // Xóa 1 ảnh đã chụp
   function removeImage(index) {
-    capturedImages[index] = null;
+    capturedImages[index] = null; // xóa phần tử mảng
     const wrapper = document.getElementById(`imgWrapper_${index}`);
     wrapper.innerHTML = '';
+    // Cập nhật hidden input
     faceImagesInput.value = JSON.stringify(capturedImages);
+    // Đếm số ảnh còn lại
     currentSlot = capturedImages.filter(Boolean).length;
     if (currentSlot === 0) {
       saveBtn.disabled = true;
     }
   }
 
+  // Kiểm tra form
   function validateForm() {
     const code = document.getElementById("employee_id").value.trim();
     const name = document.getElementById("full_name").value.trim();
@@ -177,7 +185,6 @@
       alert("Vui lòng chụp ảnh khuôn mặt.");
       return false;
     }
-
     return true;
   }
 
