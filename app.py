@@ -16,15 +16,11 @@ app.config['UPLOAD_FOLDER'] = 'static/uploads'
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
-###############################################################################
 # Hàm kiểm tra chuỗi có phải bcrypt-hash không
-###############################################################################
 def is_bcrypt_hash(text):
     return bool(re.match(r'^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$', text))
 
-###############################################################################
 # Khởi tạo DB
-###############################################################################
 def init_db():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
@@ -106,9 +102,7 @@ def init_db():
 
 init_db()
 
-###############################################################################
 # Fallback check_login
-###############################################################################
 def check_login(username, password):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
@@ -124,9 +118,7 @@ def check_login(username, password):
             return (password == stored_pw)
     return False
 
-###############################################################################
-# LOGIN ( '/' và '/login' dùng chung )
-###############################################################################
+# LOGIN 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -141,9 +133,7 @@ def login():
             flash('Sai tên đăng nhập hoặc mật khẩu!', 'danger')
     return render_template('login.html')
 
-###############################################################################
 # EMPLOYEE LIST
-###############################################################################
 @app.route('/employee_list')
 def employee_list():
     if not session.get('logged_in'):
@@ -159,18 +149,14 @@ def employee_list():
     conn.close()
     return render_template('employee_list.html', employees=employees)
 
-###############################################################################
 # LOGOUT
-###############################################################################
 @app.route('/logout')
 def logout():
     session.pop('logged_in', None)
     session.pop('username', None)
     return redirect(url_for('login'))
 
-###############################################################################
 #region ADD_EMPLOYEE
-###############################################################################
 @app.route('/add_employee', methods=['GET', 'POST'])
 def add_employee():
     if not session.get('logged_in'):
@@ -234,37 +220,27 @@ def add_employee():
     departments = cursor.fetchall()
     conn.close()
     return render_template('add_employee.html', departments=departments)
-###############################################################################
-#endregion ADD_EMPLOYEE
-###############################################################################
 
-
-###############################################################################
 # EDIT EMPLOYEE (mới thêm)
-###############################################################################
 @app.route('/edit_employee/<string:id>', methods=['GET', 'POST'])
 def edit_employee(id):
     """
     Sửa thông tin nhân viên. Bổ sung tính năng chụp 80 ảnh.
     Nếu user chụp ảnh mới => update FaceImagePath. Nếu không => giữ ảnh cũ.
     """
-
     # Kiểm tra đăng nhập
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-
     # Mở kết nối DB
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
 
-    # ========================== SỬA TỪ ĐÂY ==========================
     if request.method == 'POST':
         # Lấy dữ liệu form
         employee_id_form = request.form['employee_id']   # user có thể thay ID nếu bạn cho phép
         full_name       = request.form['full_name']
         contact_info    = request.form['contact_info']
         department_id   = request.form['department_id']
-
         # Chuẩn bị decode ảnh base64
         import json, base64
         from werkzeug.utils import secure_filename
@@ -320,20 +296,13 @@ def edit_employee(id):
         cursor.execute('SELECT DepartmentID, DepartmentName FROM Departments')
         departments = cursor.fetchall()
         conn.close()
-        # ========================== ĐẾN ĐÂY ==========================
 
         if not emp:
             flash('Không tìm thấy nhân viên để sửa!', 'danger')
             return redirect(url_for('employee_list'))
-
-        # Render template edit_employee.html
-        # emp = (EmployeeID, FullName, ContactInfo, DepartmentID, FaceImagePath)
-        # departments = [(DeptID, DeptName), ...]
         return render_template('edit_employee.html', emp=emp, departments=departments)
 
-###############################################################################
 # FACE RECOGNITION
-###############################################################################
 @app.route('/face_recognition', methods=['GET', 'POST'])
 def face_recognition():
     if not session.get('logged_in'):
@@ -343,9 +312,7 @@ def face_recognition():
         return redirect(url_for('attendance_history'))
     return render_template('face_recognition.html')
 
-###############################################################################
 # ATTENDANCE HISTORY
-###############################################################################
 @app.route('/attendance_history')
 def attendance_history():
     if not session.get('logged_in'):
@@ -367,9 +334,7 @@ def attendance_history():
                            month_filter=month_filter,
                            year_filter=year_filter)
 
-###############################################################################
 # API: ATTENDANCE CALENDAR
-###############################################################################
 @app.route('/api/attendance_calendar', methods=['GET'])
 def get_attendance_calendar():
     """Trả về JSON danh sách chấm công dạng lịch."""
@@ -408,7 +373,6 @@ def get_attendance_calendar():
             'checkin_image': checkin_image,
             'checkout_image': checkout_image
         }
-
     calendar_data = []
     for idx, emp in enumerate(employees, 1):
         emp_id, full_name, remaining_leave_days = emp
@@ -447,7 +411,6 @@ def get_attendance_calendar():
                 'checkin_image': checkin_image,
                 'checkout_image': checkout_image
             })
-
         calendar_data.append({
             'stt': idx,
             'employee_id': emp_id,
@@ -467,10 +430,7 @@ def get_attendance_calendar():
         'calendar_data': calendar_data
     })
 
-
-###############################################################################
 # API: ATTENDANCE DETAIL
-###############################################################################
 @app.route('/api/attendance_detail', methods=['GET'])
 def get_attendance_detail():
     """Trả về JSON chi tiết 1 ngày công của 1 nhân viên."""
@@ -507,10 +467,7 @@ def get_attendance_detail():
         })
     return jsonify({'success': False, 'message': 'No data found'})
 
-
-###############################################################################
 # API: MANUAL CHECKIN POPUP
-###############################################################################
 @app.route('/api/manual_checkin_popup', methods=['POST'])
 def manual_checkin_popup():
     """Chấm công thủ công từ popup."""
@@ -582,10 +539,7 @@ def manual_checkin_popup():
 
     return jsonify({'success': True, 'message': 'Chấm công thủ công thành công'})
 
-
-###############################################################################
 # MANUAL CHECKIN (form)
-###############################################################################
 @app.route('/manual_checkin', methods=['GET', 'POST'])
 def manual_checkin():
     """Chấm công thủ công qua form. Yêu cầu đăng nhập."""
@@ -624,10 +578,7 @@ def manual_checkin():
     conn.close()
     return render_template('manual_checkin.html', employees=employees)
 
-
-###############################################################################
 # REPORT
-###############################################################################
 @app.route('/report', methods=['GET', 'POST'])
 def report():
     """Báo cáo thống kê. Yêu cầu đăng nhập."""
@@ -732,11 +683,8 @@ def report():
         GROUP BY d.DepartmentID, d.DepartmentName
     ''')
     department_stats = cursor.fetchall()
-
     conn.close()
-
     has_data = bool(employee_stats or detailed_records or department_stats)
-
     return render_template('report.html', 
                            departments=departments,
                            employees=employees,
@@ -753,10 +701,7 @@ def report():
                            department_stats=department_stats,
                            has_data=has_data)
 
-
-###############################################################################
 # DELETE ATTENDANCE
-###############################################################################
 @app.route('/delete_attendance/<int:attendance_id>', methods=['POST'])
 def delete_attendance(attendance_id):
     """Xóa bản ghi Attendance theo ID."""
@@ -769,10 +714,7 @@ def delete_attendance(attendance_id):
     conn.close()
     return jsonify({'success': True, 'message': 'Xóa bản ghi thành công!'})
 
-
-###############################################################################
 # UPDATE MANUAL CHECKIN
-###############################################################################
 @app.route('/update_manual_checkin/<int:attendance_id>', methods=['GET', 'POST'])
 def update_manual_checkin(attendance_id):
     """Cập nhật chấm công thủ công."""
@@ -813,10 +755,7 @@ def update_manual_checkin(attendance_id):
     conn.close()
     return render_template('Nawupdate_manual_checkin.html', record=record)
 
-
-###############################################################################
 # ATTENDANCE DETAIL
-###############################################################################
 @app.route('/attendance_detail/<int:attendance_id>')
 def attendance_detail(attendance_id):
     """Xem chi tiết 1 bản ghi Attendance."""
@@ -932,12 +871,9 @@ def attendance_detail(attendance_id):
             </div>
         ''', record=record)
         return html
-
     return "Không tìm thấy bản ghi!"
 
-###############################################################################
 # DELETE EMPLOYEE
-###############################################################################
 @app.route('/delete_employee/<string:id>', methods=['POST'])
 def delete_employee(id):
     """Xóa nhân viên theo EmployeeID (TEXT)."""
@@ -949,8 +885,5 @@ def delete_employee(id):
     flash("Xóa nhân viên thành công!", "success")
     return redirect(url_for('employee_list'))
 
-###############################################################################
-# MAIN
-###############################################################################
 if __name__ == '__main__':
     app.run(debug=True)
