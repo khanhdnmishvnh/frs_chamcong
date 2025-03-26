@@ -23,27 +23,39 @@
         {% for emp in employees %}
         <tr class="hover:bg-gray-50">
           <td class="py-3 px-4">{{ loop.index }}</td>
-          <td class="py-3 px-4">{{ emp[0] }}</td> <!-- Mã nhân viên -->
+
+          <!-- emp[0] = Mã nhân viên -->
+          <td class="py-3 px-4">{{ emp[0] }}</td>
+
+          <!-- emp[1] = Tên nhân viên -->
           <td class="py-3 px-4">{{ emp[1] }}</td>
-          <td class="py-3 px-4">{{ emp[2] or 'Chưa rõ' }}</td>
-          <td class="py-3 px-4">{{ emp[3] or 'Không có' }}</td>
+
+          <!-- emp[4] = Tên phòng ban -->
+          <td class="py-3 px-4">{{ emp[4] or 'Chưa rõ' }}</td>
+
+          <!-- emp[2] = Số điện thoại (ContactInfo) -->
+          <td class="py-3 px-4">{{ emp[2] or 'Không có' }}</td>
+
+          <!-- emp[3] = FaceImagePath -->
           <td class="py-3 px-4">
-            {% if emp[4] %}
-              <img src="{{ url_for('static', filename=emp[4]) }}" alt="Ảnh"
+            {% if emp[3] %}
+              <!-- Dùng url_for('static', filename=emp[3]) -->
+              <img src="{{ url_for('static', filename=emp[3]) }}" alt="Ảnh"
                    class="h-10 w-10 rounded-full object-cover ring-2 ring-teal-500 shadow-sm">
             {% else %}
               <span class="text-gray-400 italic">Không có ảnh</span>
             {% endif %}
           </td>
+
           <td class="py-3 px-4 text-center">
             <div class="flex justify-center items-center space-x-2">
-              <!-- Sửa -->
+              <!-- Nút Sửa -->
               <a href="{{ url_for('edit_employee', id=emp[0]) }}"
                  class="text-yellow-500 hover:text-yellow-600" title="Sửa">
                 <i class="fas fa-edit text-lg"></i>
               </a>
 
-              <!-- Xóa -->
+              <!-- Nút Xóa -->
               <form action="{{ url_for('delete_employee', id=emp[0]) }}" method="POST"
                     onsubmit="return confirm('Bạn có chắc muốn xóa nhân viên này?');">
                 <button type="submit" title="Xóa"
